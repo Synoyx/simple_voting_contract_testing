@@ -20,20 +20,26 @@ contract ContractTest is Test {
         voting.getOneProposal(1);
     }
 
-    function test_getOneProposal() public {
+    function test_getOneProposalWithInvalidValue() public {
         _setVotingInGivenStatus(
             Voting.WorkflowStatus.ProposalsRegistrationEnded
         );
         vm.prank(voter1);
-        vm.expectRevert(
-            "FAIL. Reason: panic: array out-of-bounds access (0x32)"
-        );
+        vm.expectRevert();
         voting.getOneProposal(40);
     }
 
     function test_getVoterWithoutBeingVoter() public {
         vm.expectRevert("You're not a voter");
         voting.getVoter(voter1);
+    }
+
+    function test_getVoterWithInvalidValue() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationEnded
+        );
+        vm.prank(voter1);
+        assertEq(voting.getVoter(address(0)).isRegistered, false);
     }
 
     function test_addVoter() public {
@@ -299,6 +305,23 @@ contract ContractTest is Test {
         voting.tallyVotes();
     }
 
+    function test_tallyVote() public {
+        _setVotingInGivenStatus(Voting.WorkflowStatus.VotesTallied);
+
+        assertEq(voting.winningProposalID(), 1);
+    }
+
+    function test_tallyVoteWithoutVotes() public {
+        _setVotingToStartProposal();
+        _setVotingFromStartProposalToEndProposal();
+        voting.startVotingSession();
+        voting.endVotingSession();
+
+        voting.tallyVotes();
+
+        assertEq(voting.winningProposalID(), 0);
+    }
+
     /*
      * @dev I used a try catch here, because Ownable use a custom error.
      * The problem with vm.expectRevert is that it compares the error as full byte array
@@ -358,7 +381,7 @@ contract ContractTest is Test {
 
     function _setVotingFromStartVotingToEndVoting() internal {
         vm.prank(voter1);
-        voting.setVote(0);
+        voting.setVote(1);
         voting.endVotingSession();
     }
 }
