@@ -5,15 +5,21 @@ import {Test, console} from "../lib/forge-std/src/Test.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../src/Voting.sol";
 
+/*
+ * @author Julien P.
+ */
 contract ContractTest is Test {
     Voting voting;
     address voter1 = makeAddr("voter1");
     address voter2 = makeAddr("voter2");
+    address voter3 = makeAddr("voter3");
     address owner = address(this);
 
     function setUp() public {
         voting = new Voting();
     }
+
+    // *********** Getters *********** //
 
     function test_getOneProposalWithoutBeingVoter() public {
         vm.expectRevert("You're not a voter");
@@ -34,13 +40,7 @@ contract ContractTest is Test {
         voting.getVoter(voter1);
     }
 
-    function test_getVoterWithInvalidValue() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
-        vm.prank(voter1);
-        assertEq(voting.getVoter(address(0)).isRegistered, false);
-    }
+    // *********** Add voter *********** //
 
     function test_addVoter() public {
         voting.addVoter(owner);
@@ -53,6 +53,14 @@ contract ContractTest is Test {
         // We use prank here because only voters can call 'getvoter()'
         vm.prank(fuzzedAddress);
         assertEq(voting.getVoter(fuzzedAddress).isRegistered, true);
+    }
+
+    function test_getVoterWithInvalidValue() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationEnded
+        );
+        vm.prank(voter1);
+        assertEq(voting.getVoter(address(0)).isRegistered, false);
     }
 
     function test_addAlreadyRegisteredVoter() public {
@@ -94,25 +102,7 @@ contract ContractTest is Test {
         voting.addVoter(voter1);
     }
 
-    function test_addProposalInWrongWorkflowStatus() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
-
-        vm.prank(voter1);
-        vm.expectRevert("Proposals are not allowed yet");
-        voting.addProposal("Proposal 1");
-    }
-
-    function test_addEmptyProposal() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
-
-        vm.prank(voter1);
-        vm.expectRevert("Vous ne pouvez pas ne rien proposer");
-        voting.addProposal("");
-    }
+    // *********** Add proposal *********** //
 
     function test_addProposal() public {
         _setVotingInGivenStatus(
@@ -129,6 +119,40 @@ contract ContractTest is Test {
         vm.stopPrank();
     }
 
+    function test_fuzz_addProposal(string calldata proposal) public {
+        vm.assume(bytes(proposal).length > 0);
+
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationStarted
+        );
+
+        vm.startPrank(voter1);
+        voting.addProposal(proposal);
+
+        assertEq(bytes(proposal), bytes(voting.getOneProposal(1).description));
+        vm.stopPrank();
+    }
+
+    function test_addEmptyProposal() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationStarted
+        );
+
+        vm.prank(voter1);
+        vm.expectRevert("Vous ne pouvez pas ne rien proposer");
+        voting.addProposal("");
+    }
+
+    function test_addProposalInWrongWorkflowStatus() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationEnded
+        );
+
+        vm.prank(voter1);
+        vm.expectRevert("Proposals are not allowed yet");
+        voting.addProposal("Proposal 1");
+    }
+
     function test_addProposalWithoutBeingVoter() public {
         vm.expectRevert("You're not a voter");
         voting.addProposal("Proposal 1");
@@ -143,6 +167,27 @@ contract ContractTest is Test {
         vm.expectEmit();
         emit Voting.ProposalRegistered(1);
         voting.addProposal("Proposal 1");
+    }
+
+    // *********** Add vote *********** //
+
+    function test_setVote() public {
+        _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
+
+        vm.startPrank(voter1);
+        voting.setVote(1);
+
+        assertEq(voting.getVoter(voter1).hasVoted, true);
+        assertEq(voting.getVoter(voter1).votedProposalId, 1);
+        vm.stopPrank();
+    }
+
+    function test_setVoteWithInvalidId() public {
+        _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
+
+        vm.startPrank(voter1);
+        vm.expectRevert("Proposal not found");
+        voting.setVote(42424242);
     }
 
     function test_setVoteInWrongWorkflowStatus() public {
@@ -174,18 +219,12 @@ contract ContractTest is Test {
         voting.setVote(0);
     }
 
-    function test_setVoteWithInvalidId() public {
-        _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
-
-        vm.startPrank(voter1);
-        vm.expectRevert("Proposal not found");
-        voting.setVote(42424242);
-    }
-
     function test_setVoteWithoutBeingVoter() public {
         vm.expectRevert("You're not a voter");
         voting.setVote(0);
     }
+
+    // *********** Change workflow status *********** //
 
     function test_startProposalTimeWithoutBeingOwner() public {
         vm.prank(voter1);
@@ -283,6 +322,49 @@ contract ContractTest is Test {
         voting.endVotingSession();
     }
 
+    // *********** Tally *********** //
+
+    function test_tallyVoteWithSingleProposal() public {
+        _setVotingInGivenStatus(Voting.WorkflowStatus.VotesTallied);
+
+        assertEq(voting.winningProposalID(), 1);
+    }
+
+    function test_tallyVoteWithMultipleProposals() public {
+        voting.addVoter(voter2);
+        voting.addVoter(voter3);
+        _setVotingToStartProposal();
+        vm.prank(voter1);
+        voting.addProposal("Proposal2");
+        _setVotingFromStartProposalToEndProposal();
+        voting.startVotingSession();
+        vm.prank(voter2);
+        voting.setVote(2);
+        vm.prank(voter3);
+        voting.setVote(1);
+        voting.endVotingSession();
+
+        voting.tallyVotes();
+
+        assertEq(voting.winningProposalID(), 1);
+    }
+
+    function test_tallyVoteWithTieVote() public {
+        voting.addVoter(voter2);
+        _setVotingToStartProposal();
+        vm.prank(voter1);
+        voting.addProposal("Proposal2");
+        _setVotingFromStartProposalToEndProposal();
+        voting.startVotingSession();
+        vm.prank(voter2);
+        voting.setVote(2);
+        voting.endVotingSession();
+
+        voting.tallyVotes();
+
+        assertEq(voting.winningProposalID(), 2);
+    }
+
     function test_tallyVotesWithoutBeingOwner() public {
         vm.prank(voter1);
 
@@ -305,12 +387,6 @@ contract ContractTest is Test {
         voting.tallyVotes();
     }
 
-    function test_tallyVote() public {
-        _setVotingInGivenStatus(Voting.WorkflowStatus.VotesTallied);
-
-        assertEq(voting.winningProposalID(), 1);
-    }
-
     function test_tallyVoteWithoutVotes() public {
         _setVotingToStartProposal();
         _setVotingFromStartProposalToEndProposal();
@@ -321,6 +397,10 @@ contract ContractTest is Test {
 
         assertEq(voting.winningProposalID(), 0);
     }
+
+    //TODO tally with multiple proposal & votes
+
+    // *********** Helpers *********** //
 
     /*
      * @dev I used a try catch here, because Ownable use a custom error.
