@@ -398,8 +398,6 @@ contract ContractTest is Test {
         assertEq(voting.winningProposalID(), 0);
     }
 
-    //TODO tally with multiple proposal & votes
-
     // *********** Helpers *********** //
 
     /*
