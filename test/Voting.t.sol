@@ -9,7 +9,7 @@ import "../src/Voting.sol";
 /*
  * @author Julien P.
  */
-contract ContractTest is Test {
+contract VotingTest is Test {
     Voting voting;
     address voter1 = makeAddr("voter1");
     address voter2 = makeAddr("voter2");
@@ -423,6 +423,7 @@ contract ContractTest is Test {
     /*
      * @dev Expect revert of the given function
      * We expect the test to use the default voter as user for test : voter1
+     * Using abi.encoreWithSelector allows me to not using the encoded string method (with bytes & keccak) that I find dirty.
      */
     function _checkOnlyOwnerRevert(function() external f) internal {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, voter1));
@@ -469,26 +470,5 @@ contract ContractTest is Test {
         vm.prank(voter1);
         voting.setVote(DEFAULT_PROPOSAL_ID);
         voting.endVotingSession();
-    }
-
-    // *********** Experimental *********** //
-
-    /*
-     * @dev I used a try catch here, because Ownable use a custom error.
-     * The problem with vm.expectRevert is that it compares the error as full byte array
-     * to the given value in argument, and the selector of a custom error only gives the first 4 bytes.
-     * As I didn't want to use the method with bytes(keccak256("MethodSignature")) because it's
-     * pretty dirty, the try catch method is the solution.
-     * I deliberatly used a failing assert in try part, as the test must fail if addVoter() doesn't revert.
-     */
-    function _checkOnlyOwnerRevertExperimental(function() external f) internal {
-        try f() {
-            assertEq(true, false);
-        } catch (bytes memory errorMessage) {
-            assertEq(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                bytes4(errorMessage)
-            );
-        }
     }
 }

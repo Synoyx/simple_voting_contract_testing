@@ -5,6 +5,12 @@
 Second project for Alyra's course : testing of the simple_voting_contract.
 
 I decided to create a separate project, as the testing project must use Alyra's code as base for testing.
+The repo contains 2 files :
+
+- test/Voting.t.sol : the file to be reviewed, containing all the unit tests for the exercise
+- test/ExperimentalVoting.t.sol : file containing some interestings things that I found when I worked on the exercise.
+  Just here to share some infos, it is not part of the exercise that is performed.
+  I ignored the tests of this file with a line in foundry.toml
 
 ### Voting.t.sol
 
