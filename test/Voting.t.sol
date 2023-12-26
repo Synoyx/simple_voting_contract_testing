@@ -26,25 +26,16 @@ contract ContractTest is Test {
     // *********** Get one proposal *********** //
 
     function test_getOneProposal() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
 
         vm.prank(voter1);
-        assertEq(
-            keccak256(
-                abi.encodePacked(
-                    voting.getOneProposal(DEFAULT_PROPOSAL_ID).description
-                )
-            ),
-            keccak256(abi.encodePacked(DEFAULT_PROPOSAL))
-        );
+        assertEq(keccak256(abi.encodePacked(voting.getOneProposal(DEFAULT_PROPOSAL_ID).description)),
+            keccak256(abi.encodePacked(DEFAULT_PROPOSAL)));
     }
 
     function test_getOneProposalWithInvalidValue() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
+        
         vm.prank(voter1);
         vm.expectRevert();
         voting.getOneProposal(40);
@@ -91,9 +82,8 @@ contract ContractTest is Test {
     }
 
     function test_getVoterWithInvalidValue() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
+
         vm.prank(voter1);
         assertEq(voting.getVoter(address(0)).isRegistered, false);
     }
@@ -106,9 +96,7 @@ contract ContractTest is Test {
     }
 
     function test_addVoterInWrongStatus() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.expectRevert("Voters registration is not open yet");
         voting.addVoter(voter1);
@@ -124,10 +112,7 @@ contract ContractTest is Test {
         try voting.addVoter(voter2) {
             assertEq(true, false);
         } catch (bytes memory errorMessage) {
-            assertEq(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                bytes4(errorMessage)
-            );
+            assertEq(Ownable.OwnableUnauthorizedAccount.selector, bytes4(errorMessage));
         }
     }
 
@@ -140,41 +125,29 @@ contract ContractTest is Test {
     // *********** Add proposal *********** //
 
     function test_addProposal() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.startPrank(voter1);
         voting.addProposal("New proposal");
 
-        assertEq(
-            keccak256(abi.encodePacked("New proposal")),
-            keccak256(abi.encodePacked(voting.getOneProposal(1).description))
-        );
+        assertEq(keccak256(abi.encodePacked("New proposal")), keccak256(abi.encodePacked(voting.getOneProposal(1).description)));
         vm.stopPrank();
     }
 
     function test_fuzz_addProposal(string calldata proposal) public {
         vm.assume(bytes(proposal).length > 0);
 
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.startPrank(voter1);
         voting.addProposal(proposal);
 
-        assertEq(
-            keccak256(abi.encodePacked(proposal)),
-            keccak256(abi.encodePacked(voting.getOneProposal(1).description))
-        );
+        assertEq(keccak256(abi.encodePacked(proposal)), keccak256(abi.encodePacked(voting.getOneProposal(1).description)));
         vm.stopPrank();
     }
 
     function test_addEmptyProposal() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.prank(voter1);
         vm.expectRevert("Vous ne pouvez pas ne rien proposer");
@@ -182,9 +155,7 @@ contract ContractTest is Test {
     }
 
     function test_addProposalInWrongWorkflowStatus() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
 
         vm.prank(voter1);
         vm.expectRevert("Proposals are not allowed yet");
@@ -197,9 +168,7 @@ contract ContractTest is Test {
     }
 
     function test_addProposalEvent() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.prank(voter1);
         vm.expectEmit();
@@ -263,20 +232,16 @@ contract ContractTest is Test {
     }
 
     // *********** Change workflow status *********** //
+    // *********** Start proposal time *********** //
 
     function test_startProposalTime() public {
         voting.startProposalsRegistering();
 
-        assertEq(
-            uint(voting.workflowStatus()),
-            uint(Voting.WorkflowStatus.ProposalsRegistrationStarted)
-        );
+        assertEq(uint(voting.workflowStatus()), uint(Voting.WorkflowStatus.ProposalsRegistrationStarted));
     }
 
     function test_startProposalTimeInWrongWorkflowStatus() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
 
         vm.expectRevert("Registering proposals cant be started now");
         voting.startProposalsRegistering();
@@ -292,23 +257,17 @@ contract ContractTest is Test {
         _setVotingInGivenStatus(Voting.WorkflowStatus.RegisteringVoters);
 
         vm.expectEmit();
-        emit Voting.WorkflowStatusChange(
-            Voting.WorkflowStatus.RegisteringVoters,
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.RegisteringVoters, Voting.WorkflowStatus.ProposalsRegistrationStarted);
         voting.startProposalsRegistering();
     }
 
+    // *********** End proposal time *********** //
+
     function test_endProposalTime() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
         voting.endProposalsRegistering();
 
-        assertEq(
-            uint(voting.workflowStatus()),
-            uint(Voting.WorkflowStatus.ProposalsRegistrationEnded)
-        );
+        assertEq(uint(voting.workflowStatus()), uint(Voting.WorkflowStatus.ProposalsRegistrationEnded));
     }
 
     function test_endProposalTimeInWrongWorkflowStatus() public {
@@ -323,28 +282,21 @@ contract ContractTest is Test {
     }
 
     function test_endProposalTimeEvent() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.expectEmit();
-        emit Voting.WorkflowStatusChange(
-            Voting.WorkflowStatus.ProposalsRegistrationStarted,
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.ProposalsRegistrationStarted, 
+            Voting.WorkflowStatus.ProposalsRegistrationEnded);
         voting.endProposalsRegistering();
     }
 
+    // *********** Start voting session *********** //
+
     function test_startVotingSession() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
         voting.startVotingSession();
 
-        assertEq(
-            uint(voting.workflowStatus()),
-            uint(Voting.WorkflowStatus.VotingSessionStarted)
-        );
+        assertEq(uint(voting.workflowStatus()), uint(Voting.WorkflowStatus.VotingSessionStarted));
     }
 
     function test_startVotingSessionInWrongWorkflowStatus() public {
@@ -359,26 +311,20 @@ contract ContractTest is Test {
     }
 
     function test_startVotingSessionEvent() public {
-        _setVotingInGivenStatus(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded
-        );
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
 
         vm.expectEmit();
-        emit Voting.WorkflowStatusChange(
-            Voting.WorkflowStatus.ProposalsRegistrationEnded,
-            Voting.WorkflowStatus.VotingSessionStarted
-        );
+        emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.ProposalsRegistrationEnded, Voting.WorkflowStatus.VotingSessionStarted);
         voting.startVotingSession();
     }
+
+    // *********** End voting session *********** //
 
     function test_endVotingSession() public {
         _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
         voting.endVotingSession();
 
-        assertEq(
-            uint(voting.workflowStatus()),
-            uint(Voting.WorkflowStatus.VotingSessionEnded)
-        );
+        assertEq(uint(voting.workflowStatus()), uint(Voting.WorkflowStatus.VotingSessionEnded));
     }
 
     function test_endVotingSessionInWrongWorkflowStatus() public {
@@ -394,12 +340,8 @@ contract ContractTest is Test {
 
     function test_endVotingSessionEvent() public {
         _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
-
         vm.expectEmit();
-        emit Voting.WorkflowStatusChange(
-            Voting.WorkflowStatus.VotingSessionStarted,
-            Voting.WorkflowStatus.VotingSessionEnded
-        );
+        emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.VotingSessionStarted, Voting.WorkflowStatus.VotingSessionEnded);
         voting.endVotingSession();
     }
 
@@ -461,10 +403,7 @@ contract ContractTest is Test {
         _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionEnded);
 
         vm.expectEmit();
-        emit Voting.WorkflowStatusChange(
-            Voting.WorkflowStatus.VotingSessionEnded,
-            Voting.WorkflowStatus.VotesTallied
-        );
+        emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.VotingSessionEnded, Voting.WorkflowStatus.VotesTallied);
         voting.tallyVotes();
     }
 
@@ -486,38 +425,31 @@ contract ContractTest is Test {
      * We expect the test to use the default voter as user for test : voter1
      */
     function _checkOnlyOwnerRevert(function() external f) internal {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                voter1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, voter1));
         f();
     }
 
     /*
-     * @dev Helper method to put Voting in right state for testing purpose.
+     * @dev 
+     *  Helper method to put Voting in right state for testing purpose.
+     *  I chose to compare WorkflowStatus index, as it allows me to simplify the code.
+     *  For each workflow step, you must have done all the steps before. So instead of using a if / else if structure,
+     *  I can use here a if (value >= ), because higher step means that it will also validate all previous if
      */
     function _setVotingInGivenStatus(Voting.WorkflowStatus ws) internal {
-        if (ws == Voting.WorkflowStatus.ProposalsRegistrationStarted) {
+        if (uint(ws) >= uint(Voting.WorkflowStatus.ProposalsRegistrationStarted)) {
             _setVotingToStartProposal();
-        } else if (ws == Voting.WorkflowStatus.ProposalsRegistrationEnded) {
-            _setVotingToStartProposal();
+        }
+        if (uint(ws) >= uint(Voting.WorkflowStatus.ProposalsRegistrationEnded)) {
             _setVotingFromStartProposalToEndProposal();
-        } else if (ws == Voting.WorkflowStatus.VotingSessionStarted) {
-            _setVotingToStartProposal();
-            _setVotingFromStartProposalToEndProposal();
+        } 
+        if (uint(ws) >= uint(Voting.WorkflowStatus.VotingSessionStarted)) {
             voting.startVotingSession();
-        } else if (ws == Voting.WorkflowStatus.VotingSessionEnded) {
-            _setVotingToStartProposal();
-            _setVotingFromStartProposalToEndProposal();
-            voting.startVotingSession();
+        } 
+        if (uint(ws) >= uint(Voting.WorkflowStatus.VotingSessionEnded)) {
             _setVotingFromStartVotingToEndVoting();
-        } else if (ws == Voting.WorkflowStatus.VotesTallied) {
-            _setVotingToStartProposal();
-            _setVotingFromStartProposalToEndProposal();
-            voting.startVotingSession();
-            _setVotingFromStartVotingToEndVoting();
+        } 
+        if (uint(ws) >= uint(Voting.WorkflowStatus.VotesTallied)) {
             voting.tallyVotes();
         }
     }
