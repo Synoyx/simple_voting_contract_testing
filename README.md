@@ -2,29 +2,29 @@
 
 # simple_voting_contract_testing
 
-Second project for alyra course : testing of the simple_voting_contract.
+Second project for Alyra's course : testing of the simple_voting_contract.
 
-I decided to create a separated project, as the testing projet must use Alyra's code as base for testing.
+I decided to create a separate project, as the testing project must use Alyra's code as base for testing.
 
 ### Voting.t.sol
 
 The unit test context is pretty simple :
 
 - On each test, I 'reset' the voting instance, with setUp() method.
-- I use 4 adresses during my tests :
+- I use 4 addresses during my tests :
   - The owner, which is in this case the ContractTest's address. I let it by default, because Voting smart contract doesn't contain any method that can't be called by another contract, like call() for example
   - Voters 1, 2 and 3, that I use for my different test. Voter 1 always is the default voter used for every test, mostly in my helpers methods (see below)
-- As I can't modify the workflow status directly, and to avoid boiler plate code, I made an helper function \_setVotingInGivenStatus(Voting.WorkflowStatus ws), that allows me to set up the context for my tests with only 1 line of code. The only downside is that this helpers put defaults values (1 vote, 1 proposal, 1 vote). That make some unit tests (tally test) need set the voting status 'manually'
-- For testing onlyOwner() modifier
+- As I can't modify the workflow status directly, and to avoid boiler plate code, I made a helper function \_setVotingInGivenStatus(Voting.WorkflowStatus ws), that allows me to set up the context for my tests with only 1 line of code. The only downside is that this helper put default values (1 vote, 1 proposal, 1 vote). That makes some unit tests (tally test) need to set the voting status 'manually'
+- For testing onlyOwner() modifier, I made an helper to avoid copy-pasting the same code everywhere. This also allowed me to test functions as arguments in Solidity
 
 As I can easily change the workflow status for each test individually, I tested each method one by one, on every aspect, with the same order :
 
-- Testing normal case
-- Fuzz testing normal case (if possible)
+- Testing the normal case
+- Fuzz testing the normal case (if possible)
 - Testing normal case with invalid values (for methods with arguments)
-- Testing each revert branches
+- Testing each revert branch
 - Testing each modifier
-- Testing emitted event
+- Testing emitted events
 
 ## Test coverage
 
@@ -35,8 +35,8 @@ You can test this with the command `forge coverage`
 
 ## Unit test results
 
-There is a total of 47 unit test, to cover the whole code base.
+There is a total of 47 unit tests, to cover the whole code base.
 In the current state, all the 47 unit tests are valid.
-You can test this with the commande `forge test`
+You can test this with the command `forge test`
 
 ![Unit test results](https://image.noelshack.com/fichiers/2023/52/2/1703604659-capture-d-ecran-2023-12-26-a-16-30-48.png)
