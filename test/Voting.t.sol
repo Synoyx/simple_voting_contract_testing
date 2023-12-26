@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import {Test, console} from "../lib/forge-std/src/Test.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "../src/Voting.sol";
 
 /*
@@ -15,15 +16,29 @@ contract ContractTest is Test {
     address voter3 = makeAddr("voter3");
     address owner = address(this);
 
+    string constant DEFAULT_PROPOSAL = "Proposal 1";
+    uint constant DEFAULT_PROPOSAL_ID = 1;
+
     function setUp() public {
         voting = new Voting();
     }
 
-    // *********** Getters *********** //
+    // *********** Get one proposal *********** //
 
-    function test_getOneProposalWithoutBeingVoter() public {
-        vm.expectRevert("You're not a voter");
-        voting.getOneProposal(1);
+    function test_getOneProposal() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationEnded
+        );
+
+        vm.prank(voter1);
+        assertEq(
+            keccak256(
+                abi.encodePacked(
+                    voting.getOneProposal(DEFAULT_PROPOSAL_ID).description
+                )
+            ),
+            keccak256(abi.encodePacked(DEFAULT_PROPOSAL))
+        );
     }
 
     function test_getOneProposalWithInvalidValue() public {
@@ -33,6 +48,26 @@ contract ContractTest is Test {
         vm.prank(voter1);
         vm.expectRevert();
         voting.getOneProposal(40);
+    }
+
+    function test_getOneProposalWithoutBeingVoter() public {
+        vm.expectRevert("You're not a voter");
+        voting.getOneProposal(1);
+    }
+
+    // *********** Get voter *********** //
+
+    function test_getVoter() public {
+        voting.addVoter(voter1);
+        voting.addVoter(voter3);
+
+        vm.startPrank(voter1);
+
+        assertEq(voting.getVoter(voter1).isRegistered, true);
+        assertEq(voting.getVoter(voter2).isRegistered, false);
+        assertEq(voting.getVoter(voter3).isRegistered, true);
+
+        vm.stopPrank();
     }
 
     function test_getVoterWithoutBeingVoter() public {
@@ -110,11 +145,11 @@ contract ContractTest is Test {
         );
 
         vm.startPrank(voter1);
-        voting.addProposal("Proposal 2");
+        voting.addProposal("New proposal");
 
         assertEq(
-            bytes("Proposal 2"),
-            bytes(voting.getOneProposal(1).description)
+            keccak256(abi.encodePacked("New proposal")),
+            keccak256(abi.encodePacked(voting.getOneProposal(1).description))
         );
         vm.stopPrank();
     }
@@ -129,7 +164,10 @@ contract ContractTest is Test {
         vm.startPrank(voter1);
         voting.addProposal(proposal);
 
-        assertEq(bytes(proposal), bytes(voting.getOneProposal(1).description));
+        assertEq(
+            keccak256(abi.encodePacked(proposal)),
+            keccak256(abi.encodePacked(voting.getOneProposal(1).description))
+        );
         vm.stopPrank();
     }
 
@@ -150,12 +188,12 @@ contract ContractTest is Test {
 
         vm.prank(voter1);
         vm.expectRevert("Proposals are not allowed yet");
-        voting.addProposal("Proposal 1");
+        voting.addProposal("New proposal");
     }
 
     function test_addProposalWithoutBeingVoter() public {
         vm.expectRevert("You're not a voter");
-        voting.addProposal("Proposal 1");
+        voting.addProposal("New proposal");
     }
 
     function test_addProposalEvent() public {
@@ -166,7 +204,7 @@ contract ContractTest is Test {
         vm.prank(voter1);
         vm.expectEmit();
         emit Voting.ProposalRegistered(1);
-        voting.addProposal("Proposal 1");
+        voting.addProposal("New proposal");
     }
 
     // *********** Add vote *********** //
@@ -175,10 +213,10 @@ contract ContractTest is Test {
         _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
 
         vm.startPrank(voter1);
-        voting.setVote(1);
+        voting.setVote(DEFAULT_PROPOSAL_ID);
 
         assertEq(voting.getVoter(voter1).hasVoted, true);
-        assertEq(voting.getVoter(voter1).votedProposalId, 1);
+        assertEq(voting.getVoter(voter1).votedProposalId, DEFAULT_PROPOSAL_ID);
         vm.stopPrank();
     }
 
@@ -195,19 +233,24 @@ contract ContractTest is Test {
 
         vm.prank(voter1);
         vm.expectRevert("Voting session havent started yet");
-        voting.setVote(0);
+        voting.setVote(1);
     }
 
     function test_setVoteTwice() public {
         _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
 
         vm.startPrank(voter1);
-        voting.setVote(0);
+        voting.setVote(DEFAULT_PROPOSAL_ID);
 
         vm.expectRevert("You have already voted");
-        voting.setVote(0);
+        voting.setVote(DEFAULT_PROPOSAL_ID);
 
         vm.stopPrank();
+    }
+
+    function test_setVoteWithoutBeingVoter() public {
+        vm.expectRevert("You're not a voter");
+        voting.setVote(DEFAULT_PROPOSAL_ID);
     }
 
     function test_setVoteEvent() public {
@@ -215,21 +258,19 @@ contract ContractTest is Test {
 
         vm.prank(voter1);
         vm.expectEmit();
-        emit Voting.Voted(voter1, 0);
-        voting.setVote(0);
-    }
-
-    function test_setVoteWithoutBeingVoter() public {
-        vm.expectRevert("You're not a voter");
-        voting.setVote(0);
+        emit Voting.Voted(voter1, DEFAULT_PROPOSAL_ID);
+        voting.setVote(DEFAULT_PROPOSAL_ID);
     }
 
     // *********** Change workflow status *********** //
 
-    function test_startProposalTimeWithoutBeingOwner() public {
-        vm.prank(voter1);
+    function test_startProposalTime() public {
+        voting.startProposalsRegistering();
 
-        _checkOnlyOwnerRevert(voting.startProposalsRegistering);
+        assertEq(
+            uint(voting.workflowStatus()),
+            uint(Voting.WorkflowStatus.ProposalsRegistrationStarted)
+        );
     }
 
     function test_startProposalTimeInWrongWorkflowStatus() public {
@@ -239,6 +280,12 @@ contract ContractTest is Test {
 
         vm.expectRevert("Registering proposals cant be started now");
         voting.startProposalsRegistering();
+    }
+
+    function test_startProposalTimeWithoutBeingOwner() public {
+        vm.prank(voter1);
+
+        _checkOnlyOwnerRevert(voting.startProposalsRegistering);
     }
 
     function test_startProposalTimeEvent() public {
@@ -252,15 +299,27 @@ contract ContractTest is Test {
         voting.startProposalsRegistering();
     }
 
-    function test_endProposalTimeWithoutBeingOwner() public {
-        vm.prank(voter1);
+    function test_endProposalTime() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationStarted
+        );
+        voting.endProposalsRegistering();
 
-        _checkOnlyOwnerRevert(voting.endProposalsRegistering);
+        assertEq(
+            uint(voting.workflowStatus()),
+            uint(Voting.WorkflowStatus.ProposalsRegistrationEnded)
+        );
     }
 
     function test_endProposalTimeInWrongWorkflowStatus() public {
         vm.expectRevert("Registering proposals havent started yet");
         voting.endProposalsRegistering();
+    }
+
+    function test_endProposalTimeWithoutBeingOwner() public {
+        vm.prank(voter1);
+
+        _checkOnlyOwnerRevert(voting.endProposalsRegistering);
     }
 
     function test_endProposalTimeEvent() public {
@@ -276,15 +335,27 @@ contract ContractTest is Test {
         voting.endProposalsRegistering();
     }
 
-    function test_startVotingSessionWithoutBeingOwner() public {
-        vm.prank(voter1);
+    function test_startVotingSession() public {
+        _setVotingInGivenStatus(
+            Voting.WorkflowStatus.ProposalsRegistrationEnded
+        );
+        voting.startVotingSession();
 
-        _checkOnlyOwnerRevert(voting.startVotingSession);
+        assertEq(
+            uint(voting.workflowStatus()),
+            uint(Voting.WorkflowStatus.VotingSessionStarted)
+        );
     }
 
     function test_startVotingSessionInWrongWorkflowStatus() public {
         vm.expectRevert("Registering proposals phase is not finished");
         voting.startVotingSession();
+    }
+
+    function test_startVotingSessionWithoutBeingOwner() public {
+        vm.prank(voter1);
+
+        _checkOnlyOwnerRevert(voting.startVotingSession);
     }
 
     function test_startVotingSessionEvent() public {
@@ -300,15 +371,25 @@ contract ContractTest is Test {
         voting.startVotingSession();
     }
 
-    function test_endVotingSessionWithoutBeingOwner() public {
-        vm.prank(voter1);
+    function test_endVotingSession() public {
+        _setVotingInGivenStatus(Voting.WorkflowStatus.VotingSessionStarted);
+        voting.endVotingSession();
 
-        _checkOnlyOwnerRevert(voting.endVotingSession);
+        assertEq(
+            uint(voting.workflowStatus()),
+            uint(Voting.WorkflowStatus.VotingSessionEnded)
+        );
     }
 
     function test_endVotingSessionInWrongWorkflowStatus() public {
         vm.expectRevert("Voting session havent started yet");
         voting.endVotingSession();
+    }
+
+    function test_endVotingSessionWithoutBeingOwner() public {
+        vm.prank(voter1);
+
+        _checkOnlyOwnerRevert(voting.endVotingSession);
     }
 
     function test_endVotingSessionEvent() public {
@@ -401,22 +482,17 @@ contract ContractTest is Test {
     // *********** Helpers *********** //
 
     /*
-     * @dev I used a try catch here, because Ownable use a custom error.
-     * The problem with vm.expectRevert is that it compares the error as full byte array
-     * to the given value in argument, and the selector of a custom error only gives the first 4 bytes.
-     * As I didn't want to use the method with bytes(keccak256("MethodSignature")) because it's
-     * pretty dirty, the try catch method is the solution.
-     * I deliberatly used a failing assert in try part, as the test must fail if addVoter() doesn't revert.
+     * @dev Expect revert of the given function
+     * We expect the test to use the default voter as user for test : voter1
      */
     function _checkOnlyOwnerRevert(function() external f) internal {
-        try f() {
-            assertEq(true, false);
-        } catch (bytes memory errorMessage) {
-            assertEq(
+        vm.expectRevert(
+            abi.encodeWithSelector(
                 Ownable.OwnableUnauthorizedAccount.selector,
-                bytes4(errorMessage)
-            );
-        }
+                voter1
+            )
+        );
+        f();
     }
 
     /*
@@ -453,13 +529,34 @@ contract ContractTest is Test {
 
     function _setVotingFromStartProposalToEndProposal() internal {
         vm.prank(voter1);
-        voting.addProposal("Proposal 1");
+        voting.addProposal(DEFAULT_PROPOSAL);
         voting.endProposalsRegistering();
     }
 
     function _setVotingFromStartVotingToEndVoting() internal {
         vm.prank(voter1);
-        voting.setVote(1);
+        voting.setVote(DEFAULT_PROPOSAL_ID);
         voting.endVotingSession();
+    }
+
+    // *********** Experimental *********** //
+
+    /*
+     * @dev I used a try catch here, because Ownable use a custom error.
+     * The problem with vm.expectRevert is that it compares the error as full byte array
+     * to the given value in argument, and the selector of a custom error only gives the first 4 bytes.
+     * As I didn't want to use the method with bytes(keccak256("MethodSignature")) because it's
+     * pretty dirty, the try catch method is the solution.
+     * I deliberatly used a failing assert in try part, as the test must fail if addVoter() doesn't revert.
+     */
+    function _checkOnlyOwnerRevertExperimental(function() external f) internal {
+        try f() {
+            assertEq(true, false);
+        } catch (bytes memory errorMessage) {
+            assertEq(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                bytes4(errorMessage)
+            );
+        }
     }
 }

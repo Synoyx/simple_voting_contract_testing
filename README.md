@@ -15,8 +15,16 @@ The unit test context is pretty simple :
   - The owner, which is in this case the ContractTest's address. I let it by default, because Voting smart contract doesn't contain any method that can't be called by another contract, like call() for example
   - Voters 1, 2 and 3, that I use for my different test. Voter 1 always is the default voter used for every test, mostly in my helpers methods (see below)
 - As I can't modify the workflow status directly, and to avoid boiler plate code, I made an helper function \_setVotingInGivenStatus(Voting.WorkflowStatus ws), that allows me to set up the context for my tests with only 1 line of code. The only downside is that this helpers put defaults values (1 vote, 1 proposal, 1 vote). That make some unit tests (tally test) need set the voting status 'manually'
+- For testing onlyOwner() modifier
 
-As I can easily change the workflow status for each test individually, I tested each method on every aspect, with the same order :
+As I can easily change the workflow status for each test individually, I tested each method one by one, on every aspect, with the same order :
+
+- Testing normal case
+- Fuzz testing normal case (if possible)
+- Testing normal case with invalid values (for methods with arguments)
+- Testing each revert branches
+- Testing each modifier
+- Testing emitted event
 
 ## Test coverage
 
@@ -27,8 +35,8 @@ You can test this with the command `forge coverage`
 
 ## Unit test results
 
-There is a total of 41 unit test, to cover the whole code base.
-In the current state, all the 41 unit tests are valid.
+There is a total of 47 unit test, to cover the whole code base.
+In the current state, all the 47 unit tests are valid.
 You can test this with the commande `forge test`
 
-![Unit test results](https://image.noelshack.com/fichiers/2023/52/2/1703588566-capture-d-ecran-2023-12-26-a-12-00-35.png)
+![Unit test results](https://image.noelshack.com/fichiers/2023/52/2/1703604659-capture-d-ecran-2023-12-26-a-16-30-48.png)
