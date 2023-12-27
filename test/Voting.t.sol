@@ -423,7 +423,7 @@ contract VotingTest is Test {
     /*
      * @dev Expect revert of the given function
      * We expect the test to use the default voter as user for test : voter1
-     * Using abi.encoreWithSelector allows me to not using the encoded string method (with bytes & keccak) that I find dirty.
+     * Using abi.encoreWithSelector allows me to not use the encoded string method (with bytes & keccak), and use directly the selector.
      */
     function _checkOnlyOwnerRevert(function() external f) internal {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, voter1));

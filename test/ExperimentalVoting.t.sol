@@ -58,13 +58,19 @@ contract ExperimentalVotingTest is Test, Voting {
     *   It appears that it isn't common in solidity, so I found interesting to put this here (and I used it in VotingTest)
     */
     function testExperimental_functionAsParameter() public {
-        function() internal testFunction = demoFunctionAsParameter;
+        // We can store the function as a variable, or pass it direcly as a parameter of a method
+        function() internal functionThatFail = demoFunctionAsParameter;
 
-        testFunction();
+        expectARevert(functionThatFail);
     }
 
-    function demoFunctionAsParameter() internal {
-        assertEq(true, true);
+    function expectARevert(function() internal f) internal {
+        vm.expectRevert("Error message ...");
+        f();
+    }
+
+    function demoFunctionAsParameter() internal pure {
+        revert("Error message ...");
     }
 
 
