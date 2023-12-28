@@ -61,6 +61,13 @@ contract VotingTest is Test {
         vm.stopPrank();
     }
 
+    function test_getVoterWithInvalidValue() public {
+        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
+
+        vm.prank(voter1);
+        assertEq(voting.getVoter(address(0)).isRegistered, false);
+    }
+
     function test_getVoterWithoutBeingVoter() public {
         vm.expectRevert("You're not a voter");
         voting.getVoter(voter1);
@@ -81,13 +88,6 @@ contract VotingTest is Test {
         assertEq(voting.getVoter(fuzzedAddress).isRegistered, true);
     }
 
-    function test_getVoterWithInvalidValue() public {
-        _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationEnded);
-
-        vm.prank(voter1);
-        assertEq(voting.getVoter(address(0)).isRegistered, false);
-    }
-
     function test_addAlreadyRegisteredVoter() public {
         voting.addVoter(voter1);
 
@@ -99,7 +99,7 @@ contract VotingTest is Test {
         _setVotingInGivenStatus(Voting.WorkflowStatus.ProposalsRegistrationStarted);
 
         vm.expectRevert("Voters registration is not open yet");
-        voting.addVoter(voter1);
+        voting.addVoter(voter2);
     }
 
     /*
@@ -254,8 +254,6 @@ contract VotingTest is Test {
     }
 
     function test_startProposalTimeEvent() public {
-        _setVotingInGivenStatus(Voting.WorkflowStatus.RegisteringVoters);
-
         vm.expectEmit();
         emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.RegisteringVoters, Voting.WorkflowStatus.ProposalsRegistrationStarted);
         voting.startProposalsRegistering();
@@ -350,7 +348,7 @@ contract VotingTest is Test {
     function test_tallyVoteWithSingleProposal() public {
         _setVotingInGivenStatus(Voting.WorkflowStatus.VotesTallied);
 
-        assertEq(voting.winningProposalID(), 1);
+        assertEq(voting.winningProposalID(), DEFAULT_PROPOSAL_ID);
     }
 
     function test_tallyVoteWithMultipleProposals() public {
@@ -359,13 +357,13 @@ contract VotingTest is Test {
         _setVotingToStartProposal();
         vm.prank(voter1);
         voting.addProposal("Proposal2");
-        _setVotingFromStartProposalToEndProposal();
+        _setVotingFromStartProposalToEndProposal(); // Adds a default proposal with ID 2
         voting.startVotingSession();
         vm.prank(voter2);
         voting.setVote(2);
         vm.prank(voter3);
         voting.setVote(1);
-        voting.endVotingSession();
+        _setVotingFromStartVotingToEndVoting(); // Adds a default vote on proposal 1
 
         voting.tallyVotes();
 
@@ -377,15 +375,26 @@ contract VotingTest is Test {
         _setVotingToStartProposal();
         vm.prank(voter1);
         voting.addProposal("Proposal2");
-        _setVotingFromStartProposalToEndProposal();
+        _setVotingFromStartProposalToEndProposal(); // Adds a default proposal with ID 2
         voting.startVotingSession();
         vm.prank(voter2);
         voting.setVote(2);
+        _setVotingFromStartVotingToEndVoting(); // Adds a default vote on proposal 1
+
+        voting.tallyVotes();
+
+        assertEq(voting.winningProposalID(), 1);
+    }
+
+    function test_tallyVoteWithoutVotes() public {
+        _setVotingToStartProposal();
+        _setVotingFromStartProposalToEndProposal();
+        voting.startVotingSession();
         voting.endVotingSession();
 
         voting.tallyVotes();
 
-        assertEq(voting.winningProposalID(), 2);
+        assertEq(voting.winningProposalID(), 0);
     }
 
     function test_tallyVotesWithoutBeingOwner() public {
@@ -405,17 +414,6 @@ contract VotingTest is Test {
         vm.expectEmit();
         emit Voting.WorkflowStatusChange(Voting.WorkflowStatus.VotingSessionEnded, Voting.WorkflowStatus.VotesTallied);
         voting.tallyVotes();
-    }
-
-    function test_tallyVoteWithoutVotes() public {
-        _setVotingToStartProposal();
-        _setVotingFromStartProposalToEndProposal();
-        voting.startVotingSession();
-        voting.endVotingSession();
-
-        voting.tallyVotes();
-
-        assertEq(voting.winningProposalID(), 0);
     }
 
     // *********** Helpers *********** //

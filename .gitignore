@@ -15,3 +15,10 @@ docs/
 
 # Mac files
 .DS_Store
+
+#hardhat files
+node_modules
+coverage/
+cache_hardhat/
+artifacts/
+coverage.json
