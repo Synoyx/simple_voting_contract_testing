@@ -16,8 +16,9 @@ The repo contains 3 files :
 ## Before running tests
 
 Before running tests, you'll need to install the dependencies.
-For foundry, you'll need to run the following command : `forge install OpenZeppelin/openzeppelin-contracts`
-For hardhat, you'll need to run : `npm install` It's not mandatory, as it should propose to install dependencies automatically when you run npx commands for the first time.
+
+- For foundry, you'll need to run the following command : `forge install OpenZeppelin/openzeppelin-contracts`
+- For hardhat, you'll need to run : `npm install` It's not mandatory, as it should propose to install dependencies automatically when you run npx commands for the first time.
 
 ### Voting.t.sol
 
