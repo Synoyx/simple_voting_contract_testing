@@ -5,12 +5,19 @@
 Second project for Alyra's course : testing of the simple_voting_contract.
 
 I decided to create a separate project, as the testing project must use Alyra's code as base for testing.
-The repo contains 2 files :
+The repo contains 3 files :
 
 - test/Voting.t.sol : the file to be reviewed, containing all the unit tests for the exercise
-- test/ExperimentalVoting.t.sol : file containing some interestings things that I found when I worked on the exercise.
+- test/ExperimentalVoting.t.sol : file containing some interestings things that I found when I worked on the exercise with foundry.
   Just here to share some infos, it is not part of the exercise that is performed.
   I ignored the tests of this file with a line in foundry.toml
+- test/Voting.t.js : for training purpose, I also did this exercise with hardhat
+
+## Before running tests
+
+Before running tests, you'll need to install the dependencies.
+For foundry, you'll need to run the following command : `forge install OpenZeppelin/openzeppelin-contracts`
+For hardhat, you'll need to run : `npm install` It's not mandatory, as it should propose to install dependencies automatically when you run npx commands for the first time.
 
 ### Voting.t.sol
 
@@ -46,3 +53,11 @@ In the current state, all the 47 unit tests are valid.
 You can test this with the command `forge test`
 
 ![Unit test results](https://image.noelshack.com/fichiers/2023/52/2/1703604659-capture-d-ecran-2023-12-26-a-16-30-48.png)
+
+## Hardhat
+
+As said in the first part, I made an alternative version with hardhat, for training purpose.
+There is a total of 44 unit tests with hardhat (same as foundry, minus fuzzing tests).
+All test pass, and I got 100% coverage as shown bellow, that you can check with `npx hardhat coverage`
+
+![Unit test with hardhat results](https://image.noelshack.com/fichiers/2023/52/4/1703796112-capture-d-ecran-2023-12-28-a-21-41-13.png)
