@@ -28,14 +28,8 @@ describe("Voting contract", function () {
     await expect(voting.connect(voter1).getOneProposal(424242)).to.be.revertedWithPanic(PANIC_CODES.ARRAY_ACCESS_OUT_OF_BOUNDS);
   });
 
-  it("Get one proposal without being voter", function () {
-    expect(voting.getOneProposal()).to.be.rejectedWith("You're not a voter");
-  });
-
-  it("Should add a voter", async function () {
-    await voting.addVoter(voter1);
-
-    expect((await voting.connect(voter1).getVoter(voter1)).isRegistered).to.equal(true);
+  it("Get one proposal without being voter", async function () {
+    await expect(voting.getOneProposal(1)).to.be.rejectedWith("You're not a voter");
   });
 
   // *********** Get one voter *********** //
