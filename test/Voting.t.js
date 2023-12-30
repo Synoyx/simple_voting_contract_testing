@@ -9,10 +9,61 @@ describe("Voting contract", function () {
   let owner, voter1, voter2, voter3;
   let voting;
 
-  beforeEach(async function () {
-    voting = await ethers.deployContract("Voting");
+  before(async function () {
+    // We can get our addresses only once, and reuse them for each test
     [owner, voter1, voter2, voter3] = await ethers.getSigners();
   });
+
+  beforeEach(async function () {
+    // Must reset voting instance before each test
+    voting = await ethers.deployContract("Voting");
+  });
+
+  const WorkflowStatus = {
+    RegisteringVoters: 0,
+    ProposalsRegistrationStarted: 1,
+    ProposalsRegistrationEnded: 2,
+    VotingSessionStarted: 3,
+    VotingSessionEnded: 4,
+    VotesTallied: 5,
+  };
+
+  /**
+   * I use a method to set voting in the right state here, a fixture wouldn't make sense as almost half of my tests (21/44) doesn't rely on
+   * this method and a simple beforeEach() does the job, + I don't make any change on blockchain state.
+   */
+  async function _setVotingInGivenStatus(ws) {
+    if (ws >= WorkflowStatus.ProposalsRegistrationStarted) {
+      await _setVotingToStartProposal();
+    }
+    if (ws >= WorkflowStatus.ProposalsRegistrationEnded) {
+      await _setVotingFromStartProposalToEndProposal();
+    }
+    if (ws >= WorkflowStatus.VotingSessionStarted) {
+      await voting.startVotingSession();
+    }
+    if (ws >= WorkflowStatus.VotingSessionEnded) {
+      await _setVotingFromStartVotingToEndVoting();
+    }
+    if (ws >= WorkflowStatus.VotesTallied) {
+      await voting.tallyVotes();
+    }
+  }
+
+  async function _setVotingToStartProposal() {
+    await voting.addVoter(voter1);
+    await voting.startProposalsRegistering();
+  }
+
+  async function _setVotingFromStartProposalToEndProposal() {
+    await voting.connect(voter1).addProposal(DEFAULT_PROPOSAL);
+    await voting.endProposalsRegistering();
+  }
+
+  async function _setVotingFromStartVotingToEndVoting() {
+    await voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID);
+    await voting.endVotingSession();
+  }
 
   // *********** Get one proposal *********** //
   describe("getOneProposal(uint proposalId)", function () {
@@ -337,46 +388,4 @@ describe("Voting contract", function () {
         .withArgs(WorkflowStatus.VotingSessionEnded, WorkflowStatus.VotesTallied);
     });
   });
-
-  const WorkflowStatus = {
-    RegisteringVoters: 0,
-    ProposalsRegistrationStarted: 1,
-    ProposalsRegistrationEnded: 2,
-    VotingSessionStarted: 3,
-    VotingSessionEnded: 4,
-    VotesTallied: 5,
-  };
-
-  async function _setVotingInGivenStatus(ws) {
-    if (ws >= WorkflowStatus.ProposalsRegistrationStarted) {
-      await _setVotingToStartProposal();
-    }
-    if (ws >= WorkflowStatus.ProposalsRegistrationEnded) {
-      await _setVotingFromStartProposalToEndProposal();
-    }
-    if (ws >= WorkflowStatus.VotingSessionStarted) {
-      await voting.startVotingSession();
-    }
-    if (ws >= WorkflowStatus.VotingSessionEnded) {
-      await _setVotingFromStartVotingToEndVoting();
-    }
-    if (ws >= WorkflowStatus.VotesTallied) {
-      await voting.tallyVotes();
-    }
-  }
-
-  async function _setVotingToStartProposal() {
-    await voting.addVoter(voter1);
-    await voting.startProposalsRegistering();
-  }
-
-  async function _setVotingFromStartProposalToEndProposal() {
-    await voting.connect(voter1).addProposal(DEFAULT_PROPOSAL);
-    await voting.endProposalsRegistering();
-  }
-
-  async function _setVotingFromStartVotingToEndVoting() {
-    await voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID);
-    await voting.endVotingSession();
-  }
 });

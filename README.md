@@ -61,4 +61,4 @@ As said in the first part, I made an alternative version with hardhat, for train
 There is a total of 44 unit tests with hardhat (same as foundry, minus fuzzing tests).
 All test pass, and I got 100% coverage as shown bellow, that you can check with `npx hardhat coverage`
 
-![Unit test with hardhat results](https://image.noelshack.com/fichiers/2023/52/4/1703796112-capture-d-ecran-2023-12-28-a-21-41-13.png)
+![Unit test with hardhat results](https://image.noelshack.com/fichiers/2023/52/6/1703966524-capture-d-ecran-2023-12-30-a-21-01-48.png)
