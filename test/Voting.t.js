@@ -67,15 +67,15 @@ describe("Voting contract", function () {
 
   // *********** Get one proposal *********** //
   describe("getOneProposal(uint proposalId)", function () {
-    it("Should get an existing proposal", async function () {
+    beforeEach(async function () {
       await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationEnded);
+    });
 
+    it("Should get an existing proposal", async function () {
       expect((await voting.connect(voter1).getOneProposal(DEFAULT_PROPOSAL_ID)).description).to.equal(DEFAULT_PROPOSAL);
     });
 
     it("Should fail trying to get a non existing proposal", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationEnded);
-
       await expect(voting.connect(voter1).getOneProposal(424242)).to.be.revertedWithPanic(PANIC_CODES.ARRAY_ACCESS_OUT_OF_BOUNDS);
     });
 
@@ -133,22 +133,21 @@ describe("Voting contract", function () {
 
   // *********** Add proposal *********** //
   describe("addProposal(string proposalDescription)", function () {
-    it("Should add a proposal", async function () {
+    beforeEach(async function () {
       await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationStarted);
+    });
 
+    it("Should add a proposal", async function () {
       await voting.connect(voter1).addProposal("New proposal");
       expect((await voting.connect(voter1).getOneProposal(1)).description).to.equal("New proposal");
     });
 
     it("Should fail trying to add an empty proposal", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationStarted);
-
       await expect(voting.connect(voter1).addProposal("")).to.be.revertedWith("Vous ne pouvez pas ne rien proposer");
     });
 
     it("Should fail trying to add a proposal in the wrong workflow status", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationEnded);
-
+      await voting.endProposalsRegistering();
       await expect(voting.connect(voter1).addProposal("New proposal")).to.be.revertedWith("Proposals are not allowed yet");
     });
 
@@ -157,17 +156,17 @@ describe("Voting contract", function () {
     });
 
     it("Should emit an event when adding a proposal", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationStarted);
-
       await expect(voting.connect(voter1).addProposal("New proposal")).to.emit(voting, "ProposalRegistered").withArgs(1);
     });
   });
 
   // *********** Add vote *********** //
   describe("setVote(uint proposalId)", function () {
-    it("Should add a vote", async function () {
+    beforeEach(async function () {
       await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
+    });
 
+    it("Should add a vote", async function () {
       await voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID);
 
       expect((await voting.connect(voter1).getVoter(voter1)).hasVoted).to.equal(true);
@@ -175,20 +174,15 @@ describe("Voting contract", function () {
     });
 
     it("Should fail trying to vote for a non existing proposal", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
-
       await expect(voting.connect(voter1).setVote(42424242)).to.be.revertedWith("Proposal not found");
     });
 
     it("Should fail trying to vote in a wrong workflow status", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.VotingSessionEnded);
-
+      await voting.endVotingSession();
       await expect(voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID)).to.be.revertedWith("Voting session havent started yet");
     });
 
     it("Should fail trying to vote twice", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
-
       await voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID);
 
       await expect(voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID)).to.be.revertedWith("You have already voted");
@@ -199,8 +193,6 @@ describe("Voting contract", function () {
     });
 
     it("Should emit an event when voting", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
-
       await expect(voting.connect(voter1).setVote(DEFAULT_PROPOSAL_ID)).to.emit(voting, "Voted").withArgs(voter1, DEFAULT_PROPOSAL_ID);
     });
   });
@@ -235,14 +227,17 @@ describe("Voting contract", function () {
 
   // *********** End proposal time *********** //
   describe("endProposalRegistering()", function () {
-    it("Should end proposal time", async function () {
+    beforeEach(async function () {
       await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationStarted);
+    });
 
+    it("Should end proposal time", async function () {
       await voting.endProposalsRegistering();
       expect(await voting.workflowStatus()).to.equal(WorkflowStatus.ProposalsRegistrationEnded);
     });
 
     it("Should fail trying to end proposal time in wrong workflow status", async function () {
+      await voting.endProposalsRegistering(); // Calling it twice to be in wrong current status on 2nd try
       await expect(voting.endProposalsRegistering()).to.be.revertedWith("Registering proposals havent started yet");
     });
 
@@ -253,8 +248,6 @@ describe("Voting contract", function () {
     });
 
     it("Should emit an event when ending proposal time", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationStarted);
-
       await expect(voting.endProposalsRegistering())
         .to.emit(voting, "WorkflowStatusChange")
         .withArgs(WorkflowStatus.ProposalsRegistrationStarted, WorkflowStatus.ProposalsRegistrationEnded);
@@ -263,28 +256,27 @@ describe("Voting contract", function () {
 
   // *********** Start voting session *********** //
   describe("startVotingSession()", function () {
-    it("Should start voting session", async function () {
+    beforeEach(async function () {
       await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationEnded);
+    });
 
+    it("Should start voting session", async function () {
       await voting.startVotingSession();
       expect(await voting.workflowStatus()).to.equal(WorkflowStatus.VotingSessionStarted);
     });
 
     it("Should fail trying to start voting session in wrong workflow status", async function () {
+      await voting.startVotingSession(); // Calling it twice to be in wrong current status on 2nd try
       await expect(voting.startVotingSession()).to.be.revertedWith("Registering proposals phase is not finished");
     });
 
     it("Should fail trying to start voting session without being owner", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationEnded);
-
       await expect(voting.connect(voter1).startVotingSession())
         .to.be.revertedWithCustomError(voting, "OwnableUnauthorizedAccount")
         .withArgs(voter1);
     });
 
     it("Should emit an event when starting voting session", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.ProposalsRegistrationEnded);
-
       await expect(voting.startVotingSession())
         .to.emit(voting, "WorkflowStatusChange")
         .withArgs(WorkflowStatus.ProposalsRegistrationEnded, WorkflowStatus.VotingSessionStarted);
@@ -293,28 +285,27 @@ describe("Voting contract", function () {
 
   // *********** End voting session *********** //
   describe("endVotingSession()", function () {
-    it("Should end voting session", async function () {
+    beforeEach(async function () {
       await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
-      await voting.endVotingSession();
+    });
 
+    it("Should end voting session", async function () {
+      await voting.endVotingSession();
       expect(await voting.workflowStatus()).to.equal(WorkflowStatus.VotingSessionEnded);
     });
 
     it("Should fail trying to end voting session in wrong workflow status", async function () {
+      await voting.endVotingSession(); // Calling it twice to be in wrong current status on 2nd try
       await expect(voting.endVotingSession()).to.be.revertedWith("Voting session havent started yet");
     });
 
     it("Shoud fail trying to end voting session without being owner", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
-
       await expect(voting.connect(voter1).endVotingSession())
         .to.be.revertedWithCustomError(voting, "OwnableUnauthorizedAccount")
         .withArgs(voter1);
     });
 
     it("Should emit an event when ending voting session", async function () {
-      await _setVotingInGivenStatus(WorkflowStatus.VotingSessionStarted);
-
       await expect(voting.endVotingSession())
         .to.emit(voting, "WorkflowStatusChange")
         .withArgs(WorkflowStatus.VotingSessionStarted, WorkflowStatus.VotingSessionEnded);
@@ -323,6 +314,7 @@ describe("Voting contract", function () {
 
   // *********** Tally *********** //
   describe("tallyVotes()", function () {
+    // I don't use beforeEach() here as most of my tests needs to set status manually
     it("Should tally voters (with only 1 proposal)", async function () {
       await _setVotingInGivenStatus(WorkflowStatus.VotesTallied);
 
