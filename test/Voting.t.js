@@ -29,8 +29,7 @@ describe("Voting contract", function () {
   };
 
   /**
-   * I use a method to set voting in the right state here, a fixture wouldn't make sense as almost half of my tests (21/44) doesn't rely on
-   * this method and a simple beforeEach() does the job, + I don't make any change on blockchain state.
+   * I use a method to set voting in the right state here, a fixture wouldn't make sense as I don't make any change on blockchain state
    */
   async function _setVotingInGivenStatus(ws) {
     if (ws >= WorkflowStatus.ProposalsRegistrationStarted) {
